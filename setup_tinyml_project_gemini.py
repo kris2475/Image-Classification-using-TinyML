@@ -30,15 +30,31 @@ board = seeed_xiao_esp32s3
 framework = arduino
 monitor_speed = 115200
 
-; --- TFLITE-MICRO BUILD FIX ---
-; These flags prevent compilation errors by excluding TFLite-Micro test files 
-; (like test_simd.c) that require missing dependencies (like kiss_fftnd.h).
-build_unflags =
-    -D_GLIBCXX_HAVE_ICONV
-    -D__STDC_LIMIT_MACROS
-    -D__STDC_CONSTANT_MACROS
-    -D__STDC_VERSION__
-    -D_GNU_SOURCE
+; --- TENSORFLOW LITE MICRO BUILD FIX START (COMPLETE) ---
+; These exclusions ensure we use stable, generic C++ kernels instead of conflicting/broken Xtensa-optimized kernels.
+build_unflags = 
+    -I lib/tflite-micro/tensorflow/lite/micro/kernels/xtensa/
+    - lib/tflite-micro/tensorflow/lite/micro/kernels/xtensa/add.cc
+    - lib/tflite-micro/tensorflow/lite/micro/kernels/xtensa/conv.cc
+    - lib/tflite-micro/tensorflow/lite/micro/kernels/xtensa/depthwise_conv.cc
+    - lib/tflite-micro/tensorflow/lite/micro/kernels/xtensa/depthwise_conv_int8.cc
+    - lib/tflite-micro/tensorflow/lite/micro/kernels/xtensa/fully_connected.cc
+    - lib/tflite-micro/tensorflow/lite/micro/kernels/xtensa/l2norm.cc
+    - lib/tflite-micro/tensorflow/lite/micro/kernels/xtensa/max_pool.cc
+    - lib/tflite-micro/tensorflow/lite/micro/kernels/xtensa/mul.cc
+    - lib/tflite-micro/tensorflow/lite/micro/kernels/xtensa/pooling.cc
+    - lib/tflite-micro/tensorflow/lite/micro/kernels/xtensa/pooling_int8.cc
+    - lib/tflite-micro/tensorflow/lite/micro/kernels/xtensa/softmax.cc
+    - lib/tflite-micro/tensorflow/lite/micro/kernels/xtensa/strided_slice.cc
+    - lib/tflite-micro/tensorflow/lite/micro/kernels/xtensa/sub.cc
+    - lib/tflite-micro/tensorflow/lite/micro/kernels/xtensa/svdf.cc
+    - lib/tflite-micro/tensorflow/lite/micro/kernels/xtensa/svdf_hifimini.cc
+    - lib/tflite-micro/tensorflow/lite/micro/kernels/xtensa/transpose_conv.cc
+    - lib/tflite-micro/tensorflow/lite/micro/kernels/xtensa/unidirectional_sequence_lstm.cc
+    - lib/tflite-micro/tensorflow/lite/micro/kernels/xtensa/xtensa_decode_state_huffman.cc
+    - lib/tflite-micro/tensorflow/lite/micro/kernels/xtensa/xtensa_decode_state_lut.cc
+    - lib/tflite-micro/tensorflow/lite/micro/kernels/xtensa/xtensa_decode_state_prune.cc
+; --- TENSORFLOW LITE MICRO BUILD FIX END (COMPLETE) ---
 
 build_flags =
     -DBOARD_HAS_PSRAM
@@ -49,6 +65,9 @@ build_flags =
     -D__OPTIMIZE_SIZE__
 lib_deps =
   # No external library needed; TFLite Micro will be added locally
+
+; Explicitly point to the local TFLite-Micro library directory
+lib_extra_dirs = lib/tflite-micro/
 """
 
 platformio_ini_path = os.path.join(project_path, "platformio.ini")
@@ -130,3 +149,4 @@ print(f"Created main.cpp at {main_cpp_path}")
 
 print("\n✨ Setup Complete! ✨")
 print(f"Project '{project_name}' is ready to be built using your PowerShell script.")
+
