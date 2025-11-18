@@ -1,3 +1,29 @@
+## 🏭 Why This Device Matters: An Ultra-Compact, Low-Cost Industrial Safety Solution
+
+The true value of this system for industrial deployment lies in its
+**minimal physical footprint, extremely low running cost, and autonomous
+operation**. Designed for high-efficiency environments, the device
+spends nearly all of its lifespan in **light sleep or deep sleep**,
+drawing only microamps of current. It wakes **only when needed**, either
+on a precise Real-Time Clock (RTC) schedule or immediately via external
+triggers such as a PIR motion sensor.
+
+This wake-on-demand strategy enables a **self-sufficient,
+battery-friendly TinyML node** capable of performing visual inspections
+without human supervision. When a potential **Health & Safety (H&S)
+issue** is detected---such as a **fire door left open** or a **missing
+fire extinguisher**---the system instantly raises an alert to the shop
+floor supervisor.
+
+Instead of wasting time on **low-value, repetitive monitoring**,
+supervisors can redirect their attention to higher-level operational
+duties, human management, and critical process optimisation. This is
+where AI delivers real industrial value: **enhancing safety
+compliance**, reducing oversight fatigue, and enabling leaner, more
+effective operations.
+
+------------------------------------------------------------------------
+
 # 🚪 XIAO ESP32S3 TinyML Door Status Classifier
 
 A real-time, ultra-low-power image classification system built with the
