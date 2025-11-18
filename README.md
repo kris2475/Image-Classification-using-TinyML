@@ -16,7 +16,7 @@ fire extinguisher**---the system instantly raises an alert to the shop
 floor supervisor.
 
 Instead of wasting time on **low-value, repetitive monitoring**,
-supervisors can redirect their attention to higher-level operational
+supervisors can redirect his attention to higher-level operational
 duties, human management, and critical process optimisation. This is
 where AI delivers real industrial value: **enhancing safety
 compliance**, reducing oversight fatigue, and enabling leaner, more
