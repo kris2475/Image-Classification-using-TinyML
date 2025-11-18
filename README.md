@@ -1,4 +1,4 @@
-## 🏭 Why This Device Matters: An Ultra-Compact, Low-Cost Industrial Safety Solution
+## 🏭 An Ultra-Compact, Low-Cost Industrial Safety Solution
 
 The true value of this system for industrial deployment lies in its
 **minimal physical footprint, extremely low running cost, and autonomous
