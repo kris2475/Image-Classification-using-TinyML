@@ -1,165 +1,192 @@
-🚪 XIAO ESP32S3 TinyML Door Status Classifier
+# 🚪 XIAO ESP32S3 TinyML Door Status Classifier
 
-This project features a real-time, ultra-low-power image classification system using the Seeed Studio XIAO ESP32S3 Sense and TensorFlow Lite for Microcontrollers (TinyML). Its sole purpose is to classify the state of a door as either Open or Closed with high reliability.
+A real-time, ultra-low-power image classification system built with the
+**Seeed Studio XIAO ESP32S3 Sense** and **TensorFlow Lite for
+Microcontrollers (TFLM)**.\
+Its goal: **classify a door as Open or Closed**---reliably, locally, and
+efficiently.
 
-The core success of this deployment lies in its custom data strategy, built specifically to overcome the common challenges of domain mismatch and quantization loss in edge AI projects.
+The project's success comes from a **custom on-device data strategy**
+designed to overcome the classic TinyML pitfalls of **domain mismatch**
+and **quantization loss**.
 
-✨ Features & Project Strategy
+------------------------------------------------------------------------
 
-Feature
+## ✨ Features & Project Strategy
 
-Description
+  -----------------------------------------------------------------------
+  Feature                     Description
+  --------------------------- -------------------------------------------
+  **Edge AI Inference**       Entire classification runs on the ESP32S3
+                              MCU---low-latency, private, offline.
 
-Edge AI Inference
+  **Data Fidelity**           Model trained on images captured *directly*
+                              by the XIAO's camera → domain-perfect
+                              training.
 
-Classification runs entirely on the ESP32S3 MCU, ensuring low latency and maximum privacy.
+  **Robustness**              Dataset includes lighting variations and
+                              environmental changes to avoid overfitting.
 
-Data Fidelity
+  **Optimized Input           C++ preprocessing converts RGB565 camera
+  Pipeline**                  frames to INT8 tensors efficiently.
 
-The model is trained on data captured directly by the XIAO's camera, ensuring the training domain matches the deployment domain.
+  **PSRAM Utilization**       A large **384 KB tensor arena** is
+                              allocated in external PSRAM, preserving
+                              DRAM.
 
-Robustness
+  **High Sensitivity**        Detection threshold of **0.70** ensures
+                              reliable detection of the "Door Open"
+                              state.
+  -----------------------------------------------------------------------
 
-Dataset included variations in object placement (furniture) and natural/artificial lighting to prevent overfitting to environmental factors.
+------------------------------------------------------------------------
 
-Optimized Input Pipeline
+## 🔬 Why Custom Data Was Essential
 
-Efficient C++ logic handles the critical conversion and quantization from the camera's low-depth RGB565 format to the model's required INT8 input.
+### ❌ The ImageNet Pitfall (Initial Attempt)
 
-PSRAM Utilization
+A model trained using ImageNet-like high-resolution images worked
+perfectly during FP32 training...but **failed completely** when deployed
+to the XIAO.
 
-Uses the external PSRAM (SPIRAM) for the large $384 \text{ KB}$ tensor arena, saving internal DRAM for system processes.
+**Why?**\
+The XIAO's OV2640 camera produces **96×96**, **low-color-depth**,
+**RGB565** images---nothing like ImageNet.\
+This created a **domain mismatch**, causing the model to misclassify
+nearly every frame.
 
-High Sensitivity
+### ✔️ The Custom Data Solution
 
-Detection threshold set at 0.70 for reliable positive detection of the critical "Door Open" state.
+A new dataset was created using the XIAO itself:
 
-🔬 Project Context: Why Custom Data is Key
+-   **200 images total** (100 Open, 100 Closed)\
+-   **Captured directly from the device's camera**
+-   **Environmental variability**: lighting changes + moved furniture\
+-   **Goal**: teach structural differences, not shadows or backgrounds
 
-This project's final design was a direct result of overcoming deployment challenges:
+This dataset produced a model that performs reliably under **real-world
+embedded conditions**.
 
-The ImageNet Pitfall (Initial Attempt)
+------------------------------------------------------------------------
 
-An initial model trained on a large, generic dataset like ImageNet performed extremely well in the Google Colab training environment (FP32 precision) but failed spectacularly upon deployment to the XIAO.
+## ⚙️ Hardware & Software Requirements
 
-The Problem: The high-resolution, high-fidelity images of ImageNet represented a completely different domain than the $96 \times 96$ low-color-depth images captured by the XIAO's fixed-lens OV2640 camera.
+### **Hardware**
 
-The Result: The model was unable to correctly classify the low-fidelity, noisy images produced by the target hardware, a classic Domain Mismatch failure.
+-   Seeed Studio **XIAO ESP32S3 Sense** (camera + PSRAM)
+-   USB-C cable
 
-The Custom Data Solution
+### **Software / Dependencies**
 
-To fix this, a new dataset was created on-site:
+-   Arduino IDE **or** PlatformIO
+-   ESP32 Board Support Package
+-   TensorFlow Lite Micro libraries
 
-Direct Capture: 200 images (100 'Door Closed', 100 'Door Open') were captured using the XIAO's camera itself.
+------------------------------------------------------------------------
 
-Forced Variability: During capture, furniture was moved and natural and artificial lighting conditions were intentionally altered to ensure the model learned to classify the structural difference between open/closed, rather than just the background shadows or objects.
+## ⚠️ IDE Configuration (Critical)
 
-This custom, high-variability dataset was essential to train a model that works reliably under real-world, embedded conditions.
+Use these exact settings when compiling:
 
-⚙️ Hardware & Software Requirements
+  -----------------------------------------------------------------------
+  Setting          Recommended Value                       Notes
+  ---------------- --------------------------------------- --------------
+  **Board**        XIAO ESP32S3                            ---
 
-Hardware
+  **Partition      **Huge App (3MB No OTA/FATFS)**         Required for
+  Scheme**                                                 large TFLite
+                                                           model
 
-Seeed Studio XIAO ESP32S3 Sense (with integrated camera and PSRAM)
+  **PSRAM**        **OPI PSRAM**                           Enables
+                                                           external PSRAM
+                                                           for tensor
+                                                           arena
+  -----------------------------------------------------------------------
 
-Micro USB-C Cable
+------------------------------------------------------------------------
 
-Software / Dependencies
+## 🚀 Getting Started
 
-Arduino IDE or VS Code (PlatformIO)
+### 1. **Model File (model.h)**
 
-ESP32 Board Support Package
+This project requires a quantized TFLite model converted to a C array.
 
-TensorFlow Lite Micro libraries
+Steps:
 
-⚠️ IDE Configuration (Crucial for Memory)
+1.  Train an Open vs. Closed door classifier.
+2.  Quantize to **INT8**.
+3.  Convert the `.tflite` model into a C array (e.g., **xxd**).
+4.  Save the array in **model.h** as:
 
-To allocate the necessary PSRAM and program the large model file, ensure these settings are selected in your IDE:
+``` c
+extern const unsigned char door_status_model[];
+```
 
-Setting
+Place `model.h` in the project directory.
 
-Recommended Value
+------------------------------------------------------------------------
 
-Notes
+### 2. **Upload the Sketch**
 
-Board
+1.  Copy the project's example `.ino` file.\
+2.  Confirm IDE settings (partition + PSRAM).\
+3.  Upload to XIAO ESP32S3 Sense.
 
-XIAO ESP32S3
+------------------------------------------------------------------------
 
+### 3. **Viewing Classification Output**
 
+Open **Serial Monitor @ 115200 baud**.
 
-Partition Scheme
+Example:
 
-Huge App (3MB No OTA/FATFS)
+    --- XIAO ESP32S3 TinyML (Door Status Classifier) ---
+    Tensor Arena allocated successfully in PSRAM (393216 bytes).
+    Model loaded and ready.
 
-Required for large TFLite model and application code.
+    DEBUG: Raw Scores: Closed=120, Open=115
+    🔒 Door Closed.
+    Highest 'Open' Score: 0.92 ('Closed' Score: 0.95)
 
-PSRAM
+    DEBUG: Raw Scores: Closed=80, Open=127
+    🚪 DOOR OPENED DETECTED! Confidence: 0.99 (Threshold: 0.70)
 
-OPI PSRAM
+------------------------------------------------------------------------
 
-Enables the use of external PSRAM for the tensor arena.
+## 💻 Key Preprocessing Logic
 
-🚀 Getting Started
+The project's most critical function converts **RGB565 frames → INT8
+tensors**.
 
-1. Model File (model.h)
-
-This sketch relies on a pre-trained, quantized TFLite model.
-
-Train your Door Closed vs. Door Open classification model.
-
-Quantize the model to INT8.
-
-Convert the quantized model to a C array format (e.g., using xxd or TFLM tools).
-
-Ensure the C array is defined as door_status_model and saved within a file named model.h.
-
-Place model.h in the project directory alongside the main sketch.
-
-2. Upload the Sketch
-
-Copy the contents of the provided Arduino sketch (XIAO_Image_Classifier_Door.ino).
-
-Verify your IDE settings (Partition Scheme, PSRAM) match the table above.
-
-Upload the sketch to the XIAO ESP32S3 Sense board.
-
-3. Monitoring Results
-
-Open the Serial Monitor at 115200 baud. The device will immediately begin classifying the camera feed every 1 second.
-
-Example Output:
-
---- XIAO ESP32S3 TinyML (Door Status Classifier) ---
-...
-Tensor Arena allocated successfully in PSRAM (393216 bytes).
-Model loaded and ready.
-DEBUG: Raw Scores: Closed=120, Open=115
-🔒 Door Closed. Highest 'Open' Score: 0.92 ('Closed' Score: 0.95)
-...
-DEBUG: Raw Scores: Closed=80, Open=127
-🚪 **DOOR OPENED DETECTED!** Confidence: 0.99 (Threshold: 0.70)
-
-
-💻 Key Pre-Processing Logic
-
-The GetInputData() function performs the crucial conversion of the raw camera data (PIXFORMAT_RGB565, a 16-bit color format) into the 8-bit, normalized integers (INT8) expected by the TFLite model.
-
-// Conversion from RGB565 to INT8 (0-255 mapped to -128 to 127)
+``` cpp
+// Conversion from RGB565 to INT8 (0–255 mapped to -128 to 127)
 bool GetInputData() {
     // ... camera capture ...
+
     for (int i = 0; i < src_width * src_height; i++) {
-        uint16_t pixel = src_buf[i * 2] | (src_buf[i * 2 + 1] << 8); 
+        uint16_t pixel = src_buf[i * 2] | (src_buf[i * 2 + 1] << 8);
 
-        // 1. Extract and Expand R, G, B components to 8 bits (0-255)
-        uint8_t r = ((pixel >> 11) & 0x1F) << 3; 
-        uint8_t g = ((pixel >> 5) & 0x3F) << 2; 
-        uint8_t b = (pixel & 0x1F) << 3; 
+        // 1. Extract and expand R, G, B to 8-bit
+        uint8_t r = ((pixel >> 11) & 0x1F) << 3;
+        uint8_t g = ((pixel >> 5) & 0x3F) << 2;
+        uint8_t b = (pixel & 0x1F) << 3;
 
-        // 2. Quantization (Normalization): Convert 0-255 to -128 to 127
-        dest_buf[dest_index++] = (int8_t)(r - 128); // R channel
-        dest_buf[dest_index++] = (int8_t)(g - 128); // G channel
-        dest_buf[dest_index++] = (int8_t)(b - 128); // B channel
+        // 2. Normalize for INT8 model input
+        dest_buf[dest_index++] = (int8_t)(r - 128);
+        dest_buf[dest_index++] = (int8_t)(g - 128);
+        dest_buf[dest_index++] = (int8_t)(b - 128);
     }
+
     // ... return frame buffer ...
 }
+```
+
+------------------------------------------------------------------------
+
+## 🧠 Summary
+
+This project demonstrates how **TinyML models must be trained with
+hardware-matched data** to perform effectively on microcontrollers.\
+By combining **custom datasets**, **optimized preprocessing**, and
+**efficient PSRAM usage**, the XIAO ESP32S3 becomes a robust, low-power
+door status detector.
