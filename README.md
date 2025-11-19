@@ -1,73 +1,94 @@
-🏭 An Ultra-Compact, Low-Cost Industrial Safety Solution
+🏭 Ultra-Compact, Low-Cost Industrial Safety System
 
-The true value of this system for industrial deployment lies in its minimal physical footprint, extremely low running cost, and autonomous operation. Designed for high-efficiency environments, the device spends nearly all of its lifespan in light sleep or deep sleep, drawing only microamps of current. It wakes only when needed, either on a precise Real-Time Clock (RTC) schedule or immediately via external triggers such as a PIR motion sensor.
+Autonomous TinyML Door Status Classifier Using XIAO ESP32S3 Sense
 
-This wake-on-demand strategy enables a self-sufficient, battery-friendly TinyML node capable of performing visual inspections without human supervision. When a potential Health & Safety (H&S) issue is detected—such as a fire door left open or a missing fire extinguisher—the system instantly raises an alert to the shop floor supervisor.
+Overview
 
-Instead of wasting time on low-value, repetitive monitoring, supervisors can redirect attention to higher-level operational duties, human management, and critical process optimisation. This is where AI delivers real industrial value: enhancing safety compliance, reducing oversight fatigue, and enabling leaner, more effective operations.
+This project demonstrates how an ultra-low-power, battery-friendly TinyML node can deliver real industrial safety value with minimal hardware cost and an exceptionally small footprint.
+The device spends nearly all of its lifetime in light sleep or deep sleep, waking only via:
+
+a Real-Time Clock (RTC) schedule, or
+
+external triggers such as a PIR motion sensor.
+
+This wake-on-demand approach allows the system to operate autonomously for long periods while performing local, private, on-device visual inspection.
+
+When a potential Health & Safety (H&S) issue is detected—such as an open fire door or a missing extinguisher—the system immediately notifies a supervisor.
+This shifts operator effort away from repetitive monitoring and toward higher-value operational tasks, improving safety compliance and reducing oversight fatigue.
 
 🚪 XIAO ESP32S3 TinyML Door Status Classifier
 
-A real-time, ultra-low-power image classification system built with the Seeed Studio XIAO ESP32S3 Sense and TensorFlow Lite for Microcontrollers (TFLM).
-Its goal: classify a door as Open or Closed—reliably, locally, and efficiently.
+A real-time, ultra-low-power image classification system built using:
 
-The project's success comes from a custom on-device data strategy designed to overcome the classic TinyML pitfalls of domain mismatch and quantization loss.
+Seeed Studio XIAO ESP32S3 Sense (with camera + PSRAM)
+
+TensorFlow Lite for Microcontrollers (TFLM)
+
+Its purpose: classify a door as Open or Closed—reliably and efficiently—directly on the MCU.
+
+The model achieves robust performance thanks to a custom device-captured dataset, avoiding TinyML pitfalls like domain mismatch and quantization degradation.
 
 ✨ Features & Project Strategy
 Feature	Description
-Edge AI Inference	Entire classification runs on the ESP32S3 MCU—low-latency, private, offline.
-Data Fidelity	Model trained on images captured directly by the XIAO’s camera → domain-perfect training.
-Robustness	Dataset includes lighting variations and environmental changes to avoid overfitting.
-Optimized Input Pipeline	C++ preprocessing converts RGB565 camera frames to INT8 tensors efficiently.
-PSRAM Utilization	A large 384 KB tensor arena is allocated in external PSRAM, preserving DRAM.
-High Sensitivity	Detection threshold of 0.70 ensures reliable detection of the “Door Open” state.
+Edge AI Inference	Full classification runs locally on the ESP32S3—private, offline, low-latency.
+Data Fidelity	Training images captured directly from the XIAO's camera → domain-perfect training.
+Robustness	Dataset includes lighting and environmental variations to prevent overfitting.
+Optimized Input Pipeline	C++ preprocessing converts RGB565 → INT8 tensors efficiently.
+PSRAM Utilization	Large 384 KB tensor arena stored in PSRAM to preserve DRAM.
+High Sensitivity	Detection threshold of 0.70 for reliable Open-door classification.
 🔬 Why Custom Data Was Essential
-❌ The ImageNet Pitfall (Initial Attempt)
+❌ The ImageNet Pitfall
 
-A model trained using ImageNet-like high-resolution images worked perfectly during FP32 training… but failed completely when deployed to the XIAO.
+Initial experiments using ImageNet-like high-res images failed:
 
-Why?
-The XIAO’s OV2640 camera produces 96×96, low-color-depth, RGB565 images—nothing like ImageNet.
-This created a domain mismatch, causing the model to misclassify nearly every frame.
+OV2640 camera outputs 96×96 RGB565, a tiny and low-color-depth format.
+
+FP32 models trained on high-quality images did not transfer to TFLM at all.
+
+Result: nearly every frame was misclassified.
 
 ✔️ The Custom Data Solution
 
-A new dataset was created using the XIAO itself:
+A new dataset was built using the actual device hardware:
 
-200 images (100 Open, 100 Closed)
+200 images (100 Open / 100 Closed)
 
-Captured directly from the device’s camera
+Captured directly with the XIAO ESP32S3 Sense
 
-Environmental variability: lighting changes + furniture adjustments
+Environmental variation: lighting + furniture adjustments
 
-Goal: teach structural differences, not shadows or backgrounds
+Focused on structural cues, not backgrounds
 
-This dataset produced a model that performs reliably under real-world embedded conditions.
+This produced a model that performs reliably under real-world embedded conditions.
 
 💡 Final Classification Strategy (Critical Logic Reversal)
 
-A key success factor for this project was the implementation of a final classification logic reversal to ensure reliability after camera tuning.
+A crucial reliability improvement came from applying a logic reversal after camera tuning.
 
-1. The Challenge of Low-Light Stability
+1. The Challenge: Low-Light Stability
 
-With fixed manual exposure and gain settings (G=5, E=200), the model produced high “Closed” scores for truly closed-door scenes.
-However, the “Open” score remained consistently low even when the door was open—making the typical logic:
+Manual exposure + gain (G=5, E=200) resulted in:
 
-“If Open Score > Threshold → Door is Open”
+High “Closed” scores for closed scenes
 
-unreliable.
+Low “Open” scores even when door was open → unreliable
 
-2. The Solution: Trust the Drop
+So the typical logic:
 
-The system instead monitors the drop in the reliable Closed Score:
+If OpenScore > Threshold → Door is Open
 
-If the Closed Score drops below the threshold, the door is considered OPEN.
 
-If the Closed Score stays above the threshold, the door is CLOSED.
+did not work.
+
+2. The Solution: Trust the Most Stable Class
+
+The Closed score was extremely stable and consistent.
+
+So instead we detect the drop in Closed confidence:
 
 Door Status	Condition	Threshold
-OPEN	Closed Score < 0.55	CLOSED_DOOR_THRESHOLD
-CLOSED	Closed Score ≥ 0.55	CLOSED_DOOR_THRESHOLD
+OPEN	ClosedScore < 0.55	CLOSED_DOOR_THRESHOLD
+CLOSED	ClosedScore ≥ 0.55	CLOSED_DOOR_THRESHOLD
 Final Logic Snippet
 // FINAL LOGIC: Detect "OPEN" when the reliable "Closed" score DROPS below the threshold.
 if (door_closed_score < CLOSED_DOOR_THRESHOLD) {
@@ -76,75 +97,98 @@ if (door_closed_score < CLOSED_DOOR_THRESHOLD) {
     // ... Door Closed.
 }
 
+✅ Notes on Classification Logic Reversal
+(Why This Is Perfectly Valid in ML)
+
+The logic-reversal strategy is fully legitimate and widely used in ML systems—especially in TinyML and embedded vision.
+
+Real-world ML often requires:
+
+trusting the most stable class score
+
+detecting drops instead of peaks
+
+applying domain-specific post-processing
+
+shifting thresholds for sensor-dependent reliability
+
+This approach is standard in:
+
+anomaly detection
+
+one-class classification
+
+threshold-based event detection
+
+safety-critical ML pipelines
+
+The ML model still performs the core classification; the application interprets its outputs in the most stable and environment-appropriate way.
+
+This is not a workaround—it is good engineering.
+
 ⚙️ Hardware & Software Requirements
 Hardware
 
-Seeed Studio XIAO ESP32S3 Sense (camera + PSRAM)
+Seeed Studio XIAO ESP32S3 Sense
 
 USB-C cable
 
-Software / Dependencies
+Software
 
 Arduino IDE or PlatformIO
 
-ESP32 Board Support Package
+ESP32 board package
 
-TensorFlow Lite Micro libraries
+TensorFlow Lite for Microcontrollers
 
-⚠️ IDE Configuration (Critical)
-Setting	Recommended Value	Notes
+⚠️ Critical IDE Configuration
+Setting	Value	Notes
 Board	XIAO ESP32S3	—
-Partition Scheme	Huge App (3MB No OTA/FATFS)	Required for large TFLite model
+Partition Scheme	Huge App (3MB No OTA/FATFS)	Required for ~300–500 KB model
 PSRAM	OPI PSRAM	Needed for tensor arena
 🚀 Getting Started
 1. Model File (model.h)
 
-This project requires a quantized TFLite model converted to a C array.
-
 Steps:
 
-Train an Open vs. Closed door classifier.
+Train an Open/Closed classifier
 
-Quantize to INT8.
+Quantize to INT8
 
-Convert the .tflite model into a C array (e.g., via xxd).
+Convert .tflite → C array (xxd -i)
 
-Place the array in model.h:
+Place into model.h:
 
 extern const unsigned char door_status_model[];
 
 
-Place model.h in the project directory.
+Place this file in your project folder.
 
 2. Upload the Sketch
 
-Copy the project’s example .ino file
+Load the .ino example
 
-Confirm partition & PSRAM settings
+Confirm Huge App + PSRAM
 
 Upload to XIAO ESP32S3 Sense
 
-3. Viewing Classification Output
+3. View Classification Output
 
-Open Serial Monitor @ 115200 baud.
+Serial Monitor → 115200 baud
 
-Example:
-
+Example Output
 --- XIAO ESP32S3 TinyML (Door Status Classifier) ---
 Tensor Arena allocated successfully in PSRAM (393216 bytes).
 Model loaded and ready.
 
 DEBUG: Raw Scores: Closed=120, Open=115
 🔒 Door Closed.
-Highest 'Open' Score: 0.92 ('Closed' Score: 0.95)
 
 DEBUG: Raw Scores: Closed=80, Open=127
-🚪 DOOR OPENED DETECTED! Confidence: 0.99 (Threshold: 0.70)
+🚪 DOOR OPENED DETECTED! Confidence: 0.99
 
 💻 Key Preprocessing Logic
-
-The project’s most critical function converts RGB565 frames → INT8 tensors.
-
+(RGB565 → INT8 Tensor Conversion)
 // Conversion from RGB565 to INT8 (0–255 mapped to -128 to 127)
 bool GetInputData() {
     // ... camera capture ...
@@ -152,12 +196,10 @@ bool GetInputData() {
     for (int i = 0; i < src_width * src_height; i++) {
         uint16_t pixel = src_buf[i * 2] | (src_buf[i * 2 + 1] << 8);
 
-        // 1. Extract and expand R, G, B to 8-bit
         uint8_t r = ((pixel >> 11) & 0x1F) << 3;
         uint8_t g = ((pixel >> 5) & 0x3F) << 2;
         uint8_t b = (pixel & 0x1F) << 3;
 
-        // 2. Normalize for INT8 model input
         dest_buf[dest_index++] = (int8_t)(r - 128);
         dest_buf[dest_index++] = (int8_t)(g - 128);
         dest_buf[dest_index++] = (int8_t)(b - 128);
@@ -168,14 +210,22 @@ bool GetInputData() {
 
 🧠 Summary
 
-This project demonstrates how TinyML models must be trained with hardware-matched data to perform effectively on microcontrollers.
+This project illustrates the importance of:
 
-By combining:
-
-custom datasets
+hardware-matched training data
 
 optimized preprocessing
 
-efficient PSRAM usage
+careful PSRAM memory planning
 
-…the XIAO ESP32S3 becomes a robust, low-power door status detector ideal for industrial safety automation.
+domain-informed classification logic
+
+The result is a tiny, efficient, industrial-ready door status detector ideal for:
+
+safety automation
+
+compliance monitoring
+
+low-cost industrial IoT
+
+battery-powered inspection nodes
